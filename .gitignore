@@ -1,0 +1,8 @@
+data/encoded/cleaned_telco_churn.csv
+data/encoded/telco_churn_all_onehot.csv
+data/encoded/telco_churn_encoded.csv
+data/feature_data/df_features.csv
+data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
+src/__pycache__/preprocess.cpython-314.pyc
+src/__pycache__/train.cpython-314.pyc
+app/__pycache__/app.cpython-314.pyc
