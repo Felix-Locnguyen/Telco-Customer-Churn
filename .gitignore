@@ -6,3 +6,5 @@ data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
 src/__pycache__/preprocess.cpython-314.pyc
 src/__pycache__/train.cpython-314.pyc
 app/__pycache__/app.cpython-314.pyc
+data/output/predict_20261106_150021_406482.csv
+data/output/predict_20261106_150021_427267.csv

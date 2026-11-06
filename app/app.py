@@ -34,6 +34,15 @@ COLS = [
 
 NUM_COLS = ['SeniorCitizen', 'tenure', 'MonthlyCharges', 'TotalCharges']
 
+# 14 đặc trưng mới do pipeline tạo (TenureGroup bắt đầu bằng 'TenureGroup_')
+NEW_FEATURES = [
+    'AverageMonthlyCharges', 'ChargeRatio', 'LifetimeValue_Proxy',
+    'TotalServicesCount', 'HasSecuritySuite', 'HasStreamingSuite',
+    'TenureGroup_', 'IsNewCustomer', 'Contract_Tenure_Ratio',
+    'IsNearContractEnd', 'IsHighRiskPayment', 'IsAutomaticPayment',
+    'HouseholdSize_Proxy', 'IsSingleSenior'
+]
+
 YES_NO = ['Yes', 'No']
 CHOICES = {
     'gender': ['Male', 'Female'],
@@ -113,6 +122,27 @@ def make_top5():
     return fig
 
 
+def build_result_df():
+    """Mã hóa ngược: df gốc (Yes/No giữ nguyên) + 14 đặc trưng + dự đoán."""
+    out = LAST_RAW.copy()
+
+    for name in NEW_FEATURES:
+        if name == 'TenureGroup_':
+            # 4 cột dummy -> 1 cột nhãn '0-12', '12-24', '24-48', '>48'
+            dummies = [c for c in LAST_OUT.columns if c.startswith(name)]
+            out['TenureGroup'] = (
+                LAST_OUT[dummies].idxmax(axis=1).str.replace(name, '')
+            )
+        else:
+            # Đặc trưng số / cờ 0-1: giữ nguyên, không cần giải mã
+            for c in [c for c in LAST_OUT.columns if c.startswith(name)]:
+                out[c] = LAST_OUT[c].values
+
+    out['Churn_Probability'] = LAST_OUT['Churn_Probability'].values
+    out['Predicted_Churn'] = LAST_OUT['Predicted_Churn'].values
+    return out
+
+
 def show(df):
     """Dự đoán + trả về 3 đồ thị/hội thoại cho giao diện."""
     global LAST_RAW, LAST_OUT
@@ -121,7 +151,8 @@ def show(df):
     LAST_RAW = df.copy()
     LAST_OUT = predict(df)
 
-    return make_pie(LAST_OUT), format_table(LAST_OUT), make_top5()
+    # Bảng hiển thị: cột gốc Yes/No đọc được + đặc trưng mới + dự đoán
+    return make_pie(LAST_OUT), format_table(build_result_df()), make_top5()
 
 def on_manual(*args):
     """Nhập tay 1 khách hàng -> DataFrame."""
@@ -161,27 +192,14 @@ def on_save(with_new_features):
         return '⚠️ Chưa có kết quả nào để lưu. Hãy dự đoán trước.'
 
     # Luôn bắt đầu từ cột gốc (đủ 21 cột, có customerID)
-    out = LAST_RAW.copy()
-
     if with_new_features:
-        # Thêm 14 đặc trưng mới (TenureGroup lưu dạng cột con TenureGroup_*)
-        new_feats = [
-            'AverageMonthlyCharges', 'ChargeRatio', 'LifetimeValue_Proxy',
-            'TotalServicesCount', 'HasSecuritySuite', 'HasStreamingSuite',
-            'TenureGroup_', 'IsNewCustomer', 'Contract_Tenure_Ratio',
-            'IsNearContractEnd', 'IsHighRiskPayment', 'IsAutomaticPayment',
-            'HouseholdSize_Proxy', 'IsSingleSenior'
-        ]
-        feat_cols = [
-            c for c in LAST_OUT.columns
-            if any(c.startswith(n) for n in new_feats)
-        ]
-        for c in feat_cols:
-            out[c] = LAST_OUT[c].values
-
-    # Cột kết quả dự đoán
-    out['Churn_Probability'] = LAST_OUT['Churn_Probability'].values
-    out['Predicted_Churn'] = LAST_OUT['Predicted_Churn'].values
+        # Cột gốc + 14 đặc trưng (đã mã hóa ngược) + dự đoán
+        out = build_result_df()
+    else:
+        # Chỉ các cột gốc + kết quả dự đoán
+        out = LAST_RAW.copy()
+        out['Churn_Probability'] = LAST_OUT['Churn_Probability'].values
+        out['Predicted_Churn'] = LAST_OUT['Predicted_Churn'].values
 
     folder = os.path.join(ROOT, 'data', 'output')
     os.makedirs(folder, exist_ok=True)
@@ -249,7 +267,7 @@ theme = gr.themes.Soft(
     radius_size='lg',
 )
 
-with gr.Blocks(title='Telco Churn Demo', theme=theme, css=CSS) as demo:
+with gr.Blocks(title='Telco Churn Demo') as demo:
     gr.HTML(
         f"""
         <div id="header">
@@ -341,4 +359,4 @@ with gr.Blocks(title='Telco Churn Demo', theme=theme, css=CSS) as demo:
 
 
 if __name__ == '__main__':
-    demo.launch()
+    demo.launch(theme=theme, css=CSS)
